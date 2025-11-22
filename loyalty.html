@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loyalty Braingames</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        .loader { border: 3px solid #f3f3f3; border-top: 3px solid #0d9488; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        input:focus { outline: 2px solid #0d9488; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen pb-20 md:pb-0">
+
+    <!-- MODAL LOGIN (Untuk Staff/Admin) -->
+    <div id="login-modal" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-50 p-4 fade-in">
+        <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl">
+            <div class="text-center mb-6">
+                <div class="h-12 w-12 bg-teal-600 rounded-full flex items-center justify-center text-white mx-auto mb-2">
+                    <i class="fas fa-lock"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-800">Login Staff / Admin</h3>
+                <p class="text-sm text-gray-500">Masukkan akun sesuai peran Anda</p>
+            </div>
+            <form id="form-login-staff" class="space-y-4">
+                <input type="email" id="login-email" placeholder="Email" class="w-full p-3 border rounded-xl text-sm" required>
+                <input type="password" id="login-pass" placeholder="Password" class="w-full p-3 border rounded-xl text-sm" required>
+                <button type="submit" id="btn-login-submit" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-xl transition">Masuk</button>
+            </form>
+            <button onclick="closeLoginModal()" class="w-full mt-3 text-sm text-gray-400 hover:text-gray-600">Batal</button>
+        </div>
+    </div>
+
+    <!-- HEADER -->
+    <header class="bg-white shadow-sm sticky top-0 z-10">
+        <div class="max-w-3xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="h-10 w-10 bg-teal-600 rounded-full flex items-center justify-center text-white font-bold text-xl">B</div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight">Braingames</h1>
+                    <p class="text-xs text-slate-500">Loyalty System</p>
+                </div>
+            </div>
+            
+            <!-- Desktop Nav & Logout -->
+            <div class="hidden md:flex items-center gap-2">
+                <nav class="flex gap-2">
+                    <button onclick="trySwitchTab('customer')" id="btn-desk-customer" class="px-4 py-2 rounded-lg flex items-center gap-2 transition"><i class="fas fa-user"></i> Pelanggan</button>
+                    <button onclick="trySwitchTab('staff')" id="btn-desk-staff" class="px-4 py-2 rounded-lg flex items-center gap-2 transition"><i class="fas fa-search"></i> Staff</button>
+                    <button onclick="trySwitchTab('admin')" id="btn-desk-admin" class="px-4 py-2 rounded-lg flex items-center gap-2 transition"><i class="fas fa-shield-alt"></i> Admin</button>
+                </nav>
+                <div id="user-info-display" class="hidden ml-4 flex flex-col items-end">
+                     <span id="display-email" class="text-xs font-bold text-gray-700">User</span>
+                     <span id="display-role" class="text-[10px] uppercase bg-gray-200 px-2 rounded text-gray-600">Role</span>
+                </div>
+                <button id="btn-logout" onclick="handleLogout()" class="hidden ml-2 text-red-500 hover:bg-red-50 px-3 py-2 rounded-lg text-sm font-bold border border-red-200"><i class="fas fa-sign-out-alt"></i></button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <main class="max-w-3xl mx-auto p-4">
+        
+        <!-- LOADING SCREEN -->
+        <div id="loading-screen" class="flex flex-col items-center justify-center py-20">
+            <div class="loader w-10 h-10 mb-4 border-t-4 border-teal-600"></div>
+            <p class="text-slate-500">Menghubungkan ke sistem...</p>
+        </div>
+
+        <!-- 1. CUSTOMER VIEW -->
+        <div id="view-customer" class="hidden space-y-6 fade-in">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h2 class="text-xl font-bold text-teal-800 mb-4 flex items-center gap-2"><i class="fas fa-user text-teal-500"></i> Klaim Stempel</h2>
+                
+                <form id="form-claim" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nomor WhatsApp</label>
+                        <input type="tel" id="cust-wa" class="w-full p-3 border border-gray-300 rounded-xl" placeholder="Contoh: 08123456789" required>
+                    </div>
+
+                    <!-- Info Member Dinamis -->
+                    <div id="member-info" class="hidden bg-teal-50 p-4 rounded-xl flex justify-between items-center border border-teal-100">
+                        <div>
+                            <p class="text-xs text-teal-600 font-bold uppercase tracking-wide">Status Member</p>
+                            <div id="member-status-badge" class="inline-block px-3 py-1 text-xs rounded-md mt-1 font-bold text-white bg-orange-600">Bronze</div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xs text-teal-600 font-bold uppercase tracking-wide">Stempel</p>
+                            <p id="member-stamps" class="text-3xl font-bold text-teal-800">0</p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Kode Unik Hari Ini</label>
+                        <input type="text" id="cust-code" class="w-full p-3 border border-gray-300 rounded-xl uppercase tracking-widest font-bold text-center" placeholder="XXXX" required>
+                    </div>
+
+                    <!-- Optional Fields -->
+                    <div id="new-member-fields" class="hidden grid grid-cols-2 gap-3 pt-2 border-t border-dashed">
+                        <div><label class="block text-xs text-gray-500 mb-1">Tgl Lahir Anak</label><input type="date" id="cust-dob" class="w-full p-2 text-sm border rounded-lg"></div>
+                        <div><label class="block text-xs text-gray-500 mb-1">Nama Anak</label><input type="text" id="cust-child" class="w-full p-2 text-sm border rounded-lg"></div>
+                    </div>
+
+                    <button type="submit" id="btn-claim" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-xl shadow-lg transition active:scale-95">Klaim Stempel</button>
+                </form>
+                <div id="claim-msg" class="hidden mt-4 p-3 rounded-lg text-sm"></div>
+            </div>
+            <div class="bg-blue-50 p-4 rounded-xl border border-blue-100 text-sm text-blue-800">
+                <p><b>Info:</b> Stempel hanya bisa diklaim 1x sehari. Jika target tercapai, hubungi staff.</p>
+            </div>
+        </div>
+
+        <!-- 2. STAFF VIEW (PROTECTED) -->
+        <div id="view-staff" class="hidden space-y-6 fade-in">
+            <div class="bg-indigo-50 p-4 rounded-xl border border-indigo-100 flex justify-between items-center">
+                <p class="text-sm text-indigo-800 font-bold"><i class="fas fa-id-badge mr-2"></i>Mode Staff</p>
+                <button onclick="handleLogout()" class="md:hidden text-xs bg-red-100 text-red-600 px-2 py-1 rounded font-bold">Logout</button>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2"><i class="fas fa-search text-blue-500"></i> Cari Pelanggan</h2>
+                
+                <div class="flex gap-2 mb-6">
+                    <input type="tel" id="staff-search-wa" class="flex-1 p-3 border border-gray-300 rounded-xl" placeholder="Nomor WA Pelanggan">
+                    <button onclick="staffSearch()" class="bg-blue-600 text-white px-6 rounded-xl font-bold hover:bg-blue-700"><i class="fas fa-search"></i></button>
+                </div>
+
+                <div id="staff-result" class="hidden bg-slate-50 p-5 rounded-xl border border-slate-200">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 id="staff-res-wa" class="font-bold text-lg">...</h3>
+                            <div id="staff-res-status" class="inline-block px-2 py-0.5 text-xs rounded-md mt-1 bg-gray-400 text-white">...</div>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-xs text-gray-500 uppercase font-bold">Stempel</span>
+                            <p id="staff-res-stamps" class="text-3xl font-bold text-slate-800">0</p>
+                        </div>
+                    </div>
+
+                    <form id="form-reset" class="space-y-3 border-t border-slate-200 pt-4">
+                        <p class="text-sm font-semibold text-slate-700 mb-2">Form Penukaran Hadiah</p>
+                        <input type="text" id="gift-name" placeholder="Nama Hadiah" class="w-full p-2 border rounded-lg text-sm" required>
+                        <input type="number" id="gift-value" placeholder="Nilai Hadiah (Rp)" class="w-full p-2 border rounded-lg text-sm" required>
+                        <button type="submit" id="btn-reset" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 rounded-lg text-sm shadow-md transition">Reset Stempel & Klaim</button>
+                    </form>
+                </div>
+                <div id="staff-msg" class="hidden mt-4 p-3 rounded-lg text-sm"></div>
+            </div>
+        </div>
+
+        <!-- 3. ADMIN VIEW (PROTECTED: ADMIN ONLY) -->
+        <div id="view-admin" class="hidden space-y-6 fade-in">
+            <div class="bg-teal-50 p-4 rounded-xl border border-teal-100 flex justify-between items-center">
+                <p class="text-sm text-teal-800 font-bold"><i class="fas fa-user-shield mr-2"></i>Mode Admin (Full Access)</p>
+                <button onclick="handleLogout()" class="md:hidden text-xs bg-red-100 text-red-600 px-2 py-1 rounded font-bold">Logout</button>
+            </div>
+
+            <!-- Setup Admin Help -->
+            <div class="bg-yellow-50 p-3 rounded-xl border border-yellow-100 text-xs text-yellow-800 mb-4">
+                <b>Tips:</b> Untuk menjadikan akun ini Admin, buka Console browser (F12) lalu ketik: <code>promoteToAdmin()</code>
+            </div>
+
+            <!-- Kode Harian -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-teal-100">
+                <h3 class="font-bold text-teal-800 flex items-center gap-2 mb-3"><i class="fas fa-calendar-alt"></i> Kode Harian</h3>
+                <div class="flex items-center justify-between bg-teal-50 p-3 rounded-lg mb-3">
+                    <span class="text-sm text-teal-600">Kode Aktif:</span>
+                    <span id="admin-today-code" class="font-mono font-bold text-xl text-teal-900">...</span>
+                </div>
+                <div class="flex gap-2">
+                    <input type="text" id="admin-new-code" placeholder="Set Kode Baru" class="flex-1 border border-gray-300 rounded-lg p-2 text-sm uppercase">
+                    <button onclick="setDailyCode()" class="bg-teal-600 text-white px-4 rounded-lg text-sm font-bold hover:bg-teal-700">Simpan</button>
+                </div>
+            </div>
+
+            <!-- Log Hadiah -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                <h3 class="font-bold text-gray-800 flex items-center gap-2 mb-4"><i class="fas fa-clipboard-list"></i> Log Penukaran Hadiah</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left">
+                        <thead class="text-xs text-gray-500 uppercase bg-gray-50">
+                            <tr>
+                                <th class="px-3 py-3">Waktu</th>
+                                <th class="px-3 py-3">Pelanggan</th>
+                                <th class="px-3 py-3">Hadiah</th>
+                                <th class="px-3 py-3">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-logs-body" class="divide-y divide-gray-100">
+                            <!-- Data diisi JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Mobile Nav -->
+    <div class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around p-3 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+        <button onclick="trySwitchTab('customer')" id="btn-mob-customer" class="flex flex-col items-center gap-1 text-slate-400"><i class="fas fa-user text-lg"></i><span class="text-[10px]">Klaim</span></button>
+        <button onclick="trySwitchTab('staff')" id="btn-mob-staff" class="flex flex-col items-center gap-1 text-slate-400"><i class="fas fa-search text-lg"></i><span class="text-[10px]">Staff</span></button>
+        <button onclick="trySwitchTab('admin')" id="btn-mob-admin" class="flex flex-col items-center gap-1 text-slate-400"><i class="fas fa-shield-alt text-lg"></i><span class="text-[10px]">Admin</span></button>
+    </div>
+
+    <!-- SCRIPT UTAMA -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, getDoc, setDoc, updateDoc, addDoc, query, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+  		apiKey: "AIzaSyBANaVnikkh1DIWlPC3SRCBwwbvR30vCOI",
+  		authDomain: "loyality-pelanggan-braingames.firebaseapp.com",
+  		projectId: "loyality-pelanggan-braingames",
+  		storageBucket: "loyality-pelanggan-braingames.firebasestorage.app",
+  		messagingSenderId: "1098345183518",
+  		appId: "1:1098345183518:web:75540605f034cca63db10f"
+	};
+
+        const APP_ID = "braingames-loyalty-prod"; 
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let currentUser = null;
+        let currentUserRole = null; // 'admin' atau 'staff'
+        let activeTab = 'customer';
+        let staffCurrentCustomer = null;
+
+        // --- AUTHENTICATION STATE ---
+        onAuthStateChanged(auth, async (user) => {
+            document.getElementById('loading-screen').classList.add('hidden');
+            if (user) {
+                currentUser = user;
+                
+                // 1. Jika User Anonim (Pelanggan)
+                if (user.isAnonymous) {
+                    currentUserRole = 'guest';
+                    document.getElementById('btn-logout').classList.add('hidden');
+                    document.getElementById('user-info-display').classList.add('hidden');
+                    if(activeTab !== 'customer') trySwitchTab('customer');
+                } 
+                // 2. Jika User Email (Staff/Admin)
+                else {
+                    document.getElementById('btn-logout').classList.remove('hidden');
+                    document.getElementById('user-info-display').classList.remove('hidden');
+                    document.getElementById('display-email').innerText = user.email.split('@')[0];
+
+                    // AMBIL ROLE DARI DATABASE
+                    await fetchUserRole(user);
+
+                    // Jika login via modal, tutup modal dan masuk ke tab staff
+                    if(!document.getElementById('login-modal').classList.contains('hidden')) {
+                        closeLoginModal();
+                        trySwitchTab('staff'); 
+                    }
+                }
+                initAdminListener();
+            } else {
+                signInAnonymously(auth).catch(e => alert("Koneksi Gagal: " + e.message));
+            }
+        });
+
+        async function fetchUserRole(user) {
+            const userRef = doc(db, 'artifacts', APP_ID, 'users', user.uid);
+            const snap = await getDoc(userRef);
+            
+            if(snap.exists()) {
+                // User sudah ada, ambil role
+                currentUserRole = snap.data().role;
+            } else {
+                // User baru pertama login, set default jadi 'staff'
+                currentUserRole = 'staff';
+                await setDoc(userRef, {
+                    email: user.email,
+                    role: 'staff',
+                    createdAt: serverTimestamp()
+                });
+            }
+            
+            // Update UI Role
+            const roleDisplay = document.getElementById('display-role');
+            roleDisplay.innerText = currentUserRole;
+            roleDisplay.className = currentUserRole === 'admin' 
+                ? "text-[10px] uppercase bg-red-100 text-red-800 px-2 rounded font-bold"
+                : "text-[10px] uppercase bg-blue-100 text-blue-800 px-2 rounded font-bold";
+        }
+
+        // --- TAB NAVIGATION DENGAN KEAMANAN ---
+        window.trySwitchTab = (tab) => {
+            // 1. Tab Customer (Bebas Akses)
+            if (tab === 'customer') {
+                renderTab(tab);
+                return;
+            }
+
+            // 2. Cek Login
+            if (!currentUser || currentUser.isAnonymous) {
+                document.getElementById('login-modal').classList.remove('hidden');
+                document.getElementById('login-modal').classList.add('flex');
+                return;
+            }
+
+            // 3. Cek Role untuk Tab Admin
+            if (tab === 'admin') {
+                if (currentUserRole !== 'admin') {
+                    alert("⛔ AKSES DITOLAK!\nHalaman ini khusus Admin.");
+                    return;
+                }
+            }
+
+            // 4. Staff boleh akses Staff & Customer (Admin boleh semua)
+            if (tab === 'staff') {
+                renderTab(tab);
+            } else if (tab === 'admin' && currentUserRole === 'admin') {
+                renderTab(tab);
+            }
+        };
+
+        function renderTab(tab) {
+            activeTab = tab;
+            ['customer', 'staff', 'admin'].forEach(t => {
+                document.getElementById(`view-${t}`).classList.add('hidden');
+                const mobBtn = document.getElementById(`btn-mob-${t}`);
+                const deskBtn = document.getElementById(`btn-desk-${t}`);
+                
+                if (t === tab) {
+                    document.getElementById(`view-${t}`).classList.remove('hidden');
+                    mobBtn.classList.add('text-teal-600'); mobBtn.classList.remove('text-slate-400');
+                    deskBtn.classList.add('bg-teal-50', 'text-teal-700', 'font-semibold'); deskBtn.classList.remove('text-slate-500');
+                } else {
+                    mobBtn.classList.remove('text-teal-600'); mobBtn.classList.add('text-slate-400');
+                    deskBtn.classList.remove('bg-teal-50', 'text-teal-700', 'font-semibold'); deskBtn.classList.add('text-slate-500');
+                }
+            });
+        }
+
+        // --- HELPER: JADIKAN ADMIN (CONSOLE) ---
+        window.promoteToAdmin = async () => {
+            if(!currentUser || currentUser.isAnonymous) {
+                console.error("Harus login email dulu!");
+                return;
+            }
+            try {
+                await updateDoc(doc(db, 'artifacts', APP_ID, 'users', currentUser.uid), { role: 'admin' });
+                currentUserRole = 'admin';
+                document.getElementById('display-role').innerText = 'ADMIN';
+                alert("Sukses! Akun ini sekarang adalah ADMIN.\nSilakan refresh atau coba akses menu Admin.");
+            } catch(e) { console.error(e); }
+        }
+
+        // --- MODAL LOGIN LOGIC ---
+        window.closeLoginModal = () => {
+            document.getElementById('login-modal').classList.add('hidden');
+            document.getElementById('login-modal').classList.remove('flex');
+            document.getElementById('form-login-staff').reset();
+        };
+
+        document.getElementById('form-login-staff').onsubmit = async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const pass = document.getElementById('login-pass').value;
+            const btn = document.getElementById('btn-login-submit');
+
+            btn.disabled = true; btn.innerText = "Memproses...";
+
+            try {
+                await signInWithEmailAndPassword(auth, email, pass);
+                // onAuthStateChanged akan handle sisanya
+            } catch (error) {
+                alert("Login Gagal: " + error.message);
+                btn.disabled = false; btn.innerText = "Masuk";
+            }
+        };
+
+        window.handleLogout = async () => {
+            if(confirm("Keluar dari akun?")) {
+                await signOut(auth);
+                window.location.reload(); // Refresh biar bersih
+            }
+        };
+
+        // --- HELPER FUNCTIONS ---
+        const getTodayDate = () => {
+            const d = new Date();
+            const offset = d.getTimezoneOffset() * 60000;
+            return new Date(d.getTime() - offset).toISOString().split('T')[0];
+        };
+
+        const getVIPColor = (status) => {
+            const s = (status || 'Bronze').toLowerCase();
+            if(s === 'platinum') return 'bg-teal-600';
+            if(s === 'gold') return 'bg-yellow-500 text-black';
+            if(s === 'silver') return 'bg-gray-400';
+            return 'bg-orange-600';
+        };
+
+        // --- LOGIKA PELANGGAN ---
+        const waInput = document.getElementById('cust-wa');
+        waInput.addEventListener('keyup', () => {
+            clearTimeout(window.searchTimeout);
+            window.searchTimeout = setTimeout(async () => {
+                const wa = waInput.value;
+                if(wa.length >= 9) {
+                    const docRef = doc(db, 'artifacts', APP_ID, 'public', 'data', `customers_${wa}`);
+                    const snap = await getDoc(docRef);
+                    const infoDiv = document.getElementById('member-info');
+                    const fieldsDiv = document.getElementById('new-member-fields');
+                    
+                    if(snap.exists()) {
+                        const data = snap.data();
+                        infoDiv.classList.remove('hidden');
+                        fieldsDiv.classList.add('hidden');
+                        document.getElementById('member-stamps').innerText = data.jumlahStempel;
+                        const badge = document.getElementById('member-status-badge');
+                        badge.innerText = data.status || 'Bronze';
+                        badge.className = `inline-block px-3 py-1 text-xs rounded-md mt-1 font-bold text-white ${getVIPColor(data.status)}`;
+                    } else {
+                        infoDiv.classList.add('hidden');
+                        fieldsDiv.classList.remove('hidden');
+                    }
+                }
+            }, 800);
+        });
+
+        document.getElementById('form-claim').onsubmit = async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btn-claim');
+            const msgDiv = document.getElementById('claim-msg');
+            const wa = document.getElementById('cust-wa').value;
+            const code = document.getElementById('cust-code').value.toUpperCase().trim();
+            const dob = document.getElementById('cust-dob').value;
+            const child = document.getElementById('cust-child').value;
+
+            btn.disabled = true; btn.innerText = "Memproses..."; msgDiv.classList.add('hidden');
+
+            try {
+                const today = getTodayDate();
+                const codeSnap = await getDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', `dailyCodes_${today}`));
+                if(!codeSnap.exists() || codeSnap.data().code !== code) throw "Kode unik salah atau belum diatur admin.";
+
+                const custRef = doc(db, 'artifacts', APP_ID, 'public', 'data', `customers_${wa}`);
+                const custSnap = await getDoc(custRef);
+
+                let currentData = { jumlahStempel: 0, totalStempel: 0, status: 'Bronze', lastUpdate: null };
+                if(custSnap.exists()) {
+                    currentData = custSnap.data();
+                    if(currentData.lastUpdate === today) throw "Anda sudah klaim hari ini.";
+                }
+
+                let target = 20;
+                if(currentData.status === 'Silver') target = 15;
+                if(currentData.status === 'Gold') target = 10;
+                if(currentData.status === 'Platinum') target = 5;
+
+                if(currentData.jumlahStempel >= target) throw `Stempel Penuh (${currentData.jumlahStempel}). Tukarkan dulu di Staff.`;
+
+                const newTotal = currentData.totalStempel + 1;
+                let newStatus = currentData.status;
+                if(newTotal >= 100) newStatus = 'Platinum';
+                else if(newTotal >= 50) newStatus = 'Gold';
+                else if(newTotal >= 20) newStatus = 'Silver';
+
+                const payload = {
+                    jumlahStempel: currentData.jumlahStempel + 1,
+                    totalStempel: newTotal,
+                    status: newStatus,
+                    lastUpdate: today,
+                    wa: wa
+                };
+                if(dob) payload.tglLahir = dob;
+                if(child) payload.namaAnak = child;
+
+                await setDoc(custRef, payload, { merge: true });
+
+                msgDiv.className = "mt-4 p-3 rounded-lg text-sm bg-green-100 text-green-800 block";
+                msgDiv.innerText = `Berhasil! Total Stempel: ${payload.jumlahStempel}`;
+                document.getElementById('cust-code').value = '';
+                waInput.dispatchEvent(new Event('keyup')); 
+
+            } catch (err) {
+                msgDiv.className = "mt-4 p-3 rounded-lg text-sm bg-red-100 text-red-800 block";
+                msgDiv.innerText = typeof err === 'string' ? err : err.message;
+            }
+            btn.disabled = false; btn.innerText = "Klaim Stempel";
+        };
+
+        // --- LOGIKA STAFF ---
+        window.staffSearch = async () => {
+            const wa = document.getElementById('staff-search-wa').value;
+            const resDiv = document.getElementById('staff-result');
+            const msgDiv = document.getElementById('staff-msg');
+            msgDiv.classList.add('hidden');
+            
+            if(!wa) return;
+
+            try {
+                const snap = await getDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', `customers_${wa}`));
+                if(!snap.exists()) throw "Pelanggan tidak ditemukan.";
+                
+                const data = snap.data();
+                staffCurrentCustomer = { id: wa, ...data };
+
+                resDiv.classList.remove('hidden');
+                document.getElementById('staff-res-wa').innerText = wa;
+                document.getElementById('staff-res-stamps').innerText = data.jumlahStempel;
+                
+                const badge = document.getElementById('staff-res-status');
+                badge.innerText = data.status || 'Bronze';
+                badge.className = `inline-block px-2 py-0.5 text-xs rounded-md mt-1 text-white ${getVIPColor(data.status)}`;
+
+            } catch(err) {
+                staffCurrentCustomer = null;
+                resDiv.classList.add('hidden');
+                msgDiv.className = "mt-4 p-3 rounded-lg text-sm bg-red-100 text-red-800 block";
+                msgDiv.innerText = typeof err === 'string' ? err : err.message;
+            }
+        };
+
+        document.getElementById('form-reset').onsubmit = async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btn-reset');
+            const msgDiv = document.getElementById('staff-msg');
+            
+            if(!staffCurrentCustomer) return;
+
+            let target = 20;
+            if(staffCurrentCustomer.status === 'Silver') target = 15;
+            if(staffCurrentCustomer.status === 'Gold') target = 10;
+            if(staffCurrentCustomer.status === 'Platinum') target = 5;
+
+            if(staffCurrentCustomer.jumlahStempel < target) {
+                alert(`Stempel belum cukup (Butuh ${target}).`);
+                return;
+            }
+
+            btn.disabled = true; btn.innerText = "Memproses...";
+            try {
+                await addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', 'giftLogs'), {
+                    timestamp: serverTimestamp(),
+                    localDate: new Date().toLocaleString('id-ID'),
+                    noWa: staffCurrentCustomer.id,
+                    giftName: document.getElementById('gift-name').value,
+                    giftValue: parseInt(document.getElementById('gift-value').value),
+                    status: 'Menunggu Verifikasi'
+                });
+
+                await updateDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', `customers_${staffCurrentCustomer.id}`), {
+                    jumlahStempel: 0
+                });
+
+                msgDiv.className = "mt-4 p-3 rounded-lg text-sm bg-green-100 text-green-800 block";
+                msgDiv.innerText = "Sukses! Stempel direset ke 0.";
+                document.getElementById('staff-result').classList.add('hidden');
+                document.getElementById('gift-name').value = '';
+                document.getElementById('gift-value').value = '';
+
+            } catch(err) {
+                alert(err.message);
+            }
+            btn.disabled = false; btn.innerText = "Reset Stempel & Klaim";
+        };
+
+        // --- LOGIKA ADMIN ---
+        window.setDailyCode = async () => {
+            const code = document.getElementById('admin-new-code').value;
+            if(!code) return;
+            try {
+                const today = getTodayDate();
+                await setDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', `dailyCodes_${today}`), { code: code.toUpperCase() });
+                alert("Kode berhasil disimpan!");
+                document.getElementById('admin-new-code').value = '';
+                loadDailyCode();
+            } catch(err) { alert(err.message); }
+        };
+
+        async function loadDailyCode() {
+            const today = getTodayDate();
+            const snap = await getDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', `dailyCodes_${today}`));
+            document.getElementById('admin-today-code').innerText = snap.exists() ? snap.data().code : "BELUM DIATUR";
+        }
+
+        window.verifyLog = async (id) => {
+            try {
+                await updateDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'giftLogs', id), { status: 'Terverifikasi' });
+            } catch(e) { alert(e.message); }
+        };
+
+        function initAdminListener() {
+            loadDailyCode();
+            onSnapshot(collection(db, 'artifacts', APP_ID, 'public', 'data', 'giftLogs'), (snap) => {
+                const tbody = document.getElementById('admin-logs-body');
+                tbody.innerHTML = '';
+                let logs = [];
+                snap.forEach(d => logs.push({id: d.id, ...d.data()}));
+                
+                logs.sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+
+                if(logs.length === 0) tbody.innerHTML = '<tr><td colspan="4" class="p-3 text-center text-gray-400">Belum ada data</td></tr>';
+
+                logs.forEach(log => {
+                    const statusHtml = log.status === 'Menunggu Verifikasi' 
+                        ? `<button onclick="verifyLog('${log.id}')" class="bg-orange-100 text-orange-700 px-2 py-1 rounded text-xs font-bold">Verifikasi</button>`
+                        : `<span class="text-green-600 font-bold text-xs"><i class="fas fa-check"></i> Oke</span>`;
+
+                    tbody.innerHTML += `
+                        <tr class="border-b border-gray-100">
+                            <td class="px-3 py-3 text-xs text-gray-500">${log.localDate || '-'}</td>
+                            <td class="px-3 py-3 font-medium">${log.noWa}</td>
+                            <td class="px-3 py-3">
+                                <div class="font-bold text-xs">${log.giftName}</div>
+                                <div class="text-xs text-gray-400">Rp ${log.giftValue}</div>
+                            </td>
+                            <td class="px-3 py-3">${statusHtml}</td>
+                        </tr>
+                    `;
+                });
+            });
+        }
+
+    </script>
+</body>
+</html>
