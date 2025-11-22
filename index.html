@@ -214,13 +214,13 @@
         import { getFirestore, collection, doc, getDoc, setDoc, updateDoc, addDoc, query, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
-  		apiKey: "AIzaSyBANaVnikkh1DIWlPC3SRCBwwbvR30vCOI",
-  		authDomain: "loyality-pelanggan-braingames.firebaseapp.com",
-  		projectId: "loyality-pelanggan-braingames",
-  		storageBucket: "loyality-pelanggan-braingames.firebasestorage.app",
-  		messagingSenderId: "1098345183518",
-  		appId: "1:1098345183518:web:75540605f034cca63db10f"
-	};
+            apiKey: "AIzaSyBCFGZdndtoSV0Fv4D4u6vtnD4UvOHUImQ",            
+            authDomain: "database-braingames.firebaseapp.com",     
+            projectId: "database-braingames",       
+            storageBucket: "database-braingames.firebasestorage.app", 
+            messagingSenderId: "499037597080",
+            appId: "1:499037597080:web:a3706c30c0c3a4c3240fed"    
+        };
 
         const APP_ID = "braingames-loyalty-prod"; 
 
@@ -408,7 +408,8 @@
             window.searchTimeout = setTimeout(async () => {
                 const wa = waInput.value;
                 if(wa.length >= 9) {
-                    const docRef = doc(db, 'artifacts', APP_ID, 'public', 'data', `customers_${wa}`);
+                    // PERBAIKAN: Menambahkan 'customers' sebagai nama koleksi terpisah
+                    const docRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'customers', wa);
                     const snap = await getDoc(docRef);
                     const infoDiv = document.getElementById('member-info');
                     const fieldsDiv = document.getElementById('new-member-fields');
@@ -442,10 +443,12 @@
 
             try {
                 const today = getTodayDate();
-                const codeSnap = await getDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', `dailyCodes_${today}`));
+                // PERBAIKAN: Menambahkan 'dailyCodes' sebagai koleksi terpisah
+                const codeSnap = await getDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'dailyCodes', today));
                 if(!codeSnap.exists() || codeSnap.data().code !== code) throw "Kode unik salah atau belum diatur admin.";
 
-                const custRef = doc(db, 'artifacts', APP_ID, 'public', 'data', `customers_${wa}`);
+                // PERBAIKAN: Menambahkan 'customers' sebagai koleksi terpisah
+                const custRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'customers', wa);
                 const custSnap = await getDoc(custRef);
 
                 let currentData = { jumlahStempel: 0, totalStempel: 0, status: 'Bronze', lastUpdate: null };
@@ -501,7 +504,8 @@
             if(!wa) return;
 
             try {
-                const snap = await getDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', `customers_${wa}`));
+                // PERBAIKAN: Menambahkan 'customers' sebagai koleksi terpisah
+                const snap = await getDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'customers', wa));
                 if(!snap.exists()) throw "Pelanggan tidak ditemukan.";
                 
                 const data = snap.data();
@@ -542,6 +546,7 @@
 
             btn.disabled = true; btn.innerText = "Memproses...";
             try {
+                // 1. Catat Log (Collection path is odd/5 segments = OK)
                 await addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', 'giftLogs'), {
                     timestamp: serverTimestamp(),
                     localDate: new Date().toLocaleString('id-ID'),
@@ -551,7 +556,9 @@
                     status: 'Menunggu Verifikasi'
                 });
 
-                await updateDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', `customers_${staffCurrentCustomer.id}`), {
+                // 2. Reset Stempel
+                // PERBAIKAN: Menambahkan 'customers' sebagai koleksi terpisah
+                await updateDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'customers', staffCurrentCustomer.id), {
                     jumlahStempel: 0
                 });
 
@@ -573,7 +580,8 @@
             if(!code) return;
             try {
                 const today = getTodayDate();
-                await setDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', `dailyCodes_${today}`), { code: code.toUpperCase() });
+                // PERBAIKAN: Menambahkan 'dailyCodes' sebagai koleksi terpisah
+                await setDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'dailyCodes', today), { code: code.toUpperCase() });
                 alert("Kode berhasil disimpan!");
                 document.getElementById('admin-new-code').value = '';
                 loadDailyCode();
@@ -582,7 +590,8 @@
 
         async function loadDailyCode() {
             const today = getTodayDate();
-            const snap = await getDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', `dailyCodes_${today}`));
+            // PERBAIKAN: Menambahkan 'dailyCodes' sebagai koleksi terpisah
+            const snap = await getDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'dailyCodes', today));
             document.getElementById('admin-today-code').innerText = snap.exists() ? snap.data().code : "BELUM DIATUR";
         }
 
